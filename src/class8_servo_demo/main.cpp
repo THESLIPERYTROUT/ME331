@@ -3,7 +3,7 @@
 
 #include <Servo.h>
 
-int servoPin = 5;
+int servoPin = 6;
 Servo servo;
 int angle = 0; 
 int positions[8] = {0,45,90,135,180,135,90,45};
