@@ -1,14 +1,20 @@
 #include <Arduino.h>
 #include <Servo.h>
 
+// configuration constants
 const int ECHOPIN = 8, TRIGPIN = 9, servoPin = 6;
 const int buttonPin = 2; 
 const int scanStep = 10;
+const int redLedPin = 13;
+const int greenLedPin = 12;
+const int blueLedPin = 11;
 const unsigned long settleMs = 150, pingIntervalMs = 60, debounceMs = 30;
 const unsigned long echoTimeoutUs = 12000;
 const unsigned long trackingSettleMs = 25;
 // Allow about 3 ms/degree plus one servo refresh before measuring a move.
 const unsigned long servoMsPerDegree = 3;
+
+// State variables for the scanning and tracking logic
 unsigned long moveSettleMs = settleMs, lastPingMs = 0, holdMs = 0;
 bool targetMissing = false;
 enum Mode { IDLE, SCAN_AND_POINT, SCAN_AND_TRACK };
@@ -26,6 +32,13 @@ bool targetLocked = false, trackingProbe = false;
 int targetAngle = 90, probeIndex = 0, bestTrackingAngle = 90;
 float targetDistance = 0, bestTrackingDistance = 0;
 
+
+void setLed(bool scanning, bool pointing) {
+    digitalWrite(redLedPin, pointing ? HIGH : LOW);
+    digitalWrite(greenLedPin, scanning ? HIGH : LOW);
+    digitalWrite(blueLedPin, LOW);
+}
+
 int probeAngle(int index) {
     if (index == 1) return max(0, targetAngle - trackingStep);
     if (index == 2) return min(180, targetAngle + trackingStep);
@@ -33,6 +46,7 @@ int probeAngle(int index) {
 }
 
 void moveTo(int target) {
+    setLed(true, false);
     unsigned long travelMs = abs(target - angle) * servoMsPerDegree + 20;
     moveSettleMs = max(trackingProbe ? trackingSettleMs : settleMs, travelMs);
     angle = target;
@@ -59,9 +73,10 @@ void updateButton() {
     }
     if (now - buttonChanged < debounceMs || reading == stableButton) return;
     stableButton = reading;
-    if (reading != LOW) return; // Advance once per press, never repeat on hold.
+    if (reading != LOW) return; // Advance once per press, never repeat on hold
     mode = static_cast<Mode>((static_cast<int>(mode) + 1) % 3);
     if (mode == IDLE) {
+        setLed(false, false);
         servo.write(90);
         angle = 90;
         phase = HOLDING;
@@ -98,9 +113,9 @@ float filteredDistance() {
 void updateScan() {
     if (mode == IDLE) return;
     unsigned long elapsed = millis() - phaseStarted; 
-    if (phase == HOLDING) {
+    if (phase == HOLDING) { //case when servo is holding
         if (mode == SCAN_AND_TRACK && targetLocked && elapsed >= holdMs) {
-            // Follow only near the acquired target; never restart the full sweep.
+            // Follow only near the acquired target never restart the full sweep
             trackingProbe = true;
             probeIndex = 0;
             bestTrackingDistance = 0;
@@ -109,12 +124,12 @@ void updateScan() {
         }
         return;
     }
-    if (phase == SETTLING) {
+    if (phase == SETTLING) { //case when servo is mid slew
         if (elapsed < moveSettleMs) return;
         phase = SAMPLING;
-    } else if (elapsed < pingIntervalMs) return;
+    } else if (elapsed < pingIntervalMs) return; //case when sensor is mid ping
 
-    // Keep echo spacing even though tracking uses only one ping per angle.
+    // Keep echo spacing even though tracking uses only one ping per angle
     if (millis() - lastPingMs < pingIntervalMs) return;
     lastPingMs = millis();
     float distance = readDistance();
@@ -123,12 +138,12 @@ void updateScan() {
     if (++sampleCount < (trackingProbe ? 1 : 3)) return;
     if (!trackingProbe) distance = filteredDistance();
     if (trackingProbe) {
-        // Reject echoes far from the previous range to reduce target switching.
-        float tolerance = max(15.0f, targetDistance * 0.35f);
-        if (distance > 0 && abs(distance - targetDistance) <= tolerance &&
+        // Reject echoes far from the previous range to reduce target switching
+        float tolerance = max(15.0f, targetDistance * 0.35f); // Allow 15 cm or 35% of the target distance
+        if (distance > 0 && abs(distance - targetDistance) <= tolerance && 
             (bestTrackingDistance == 0 || distance < bestTrackingDistance)) {
-            bestTrackingDistance = distance;
-            bestTrackingAngle = angle;
+            bestTrackingDistance = distance; //set new object distance
+            bestTrackingAngle = angle; //set new object angle
         }
         if (++probeIndex < 3) {
             moveTo(probeAngle(probeIndex));
@@ -149,6 +164,7 @@ void updateScan() {
         servo.write(angle);
         trackingProbe = false;
         phase = HOLDING;
+        setLed(false, !targetMissing);
         phaseStarted = millis();
         return;
     }
@@ -180,6 +196,7 @@ void updateScan() {
         Serial.println(F("No valid object detected; pointing forward"));
     }
     phase = HOLDING;
+    setLed(false, nearestDistance > 0);
     phaseStarted = millis();
 }
 
@@ -188,6 +205,14 @@ void setup() {
     pinMode(TRIGPIN, OUTPUT);
     pinMode(ECHOPIN, INPUT);
     pinMode(buttonPin, INPUT);
+    pinMode(redLedPin, OUTPUT);
+    pinMode(greenLedPin, OUTPUT);
+    pinMode(blueLedPin, OUTPUT);
+    setLed(false, false);
+    // Start in mode 1 
+    mode = IDLE;
+    phase = HOLDING;
+    lastReading = stableButton = digitalRead(buttonPin);
     servo.attach(servoPin);
     servo.write(90);
     Serial.println(F("Mode 1: idle"));

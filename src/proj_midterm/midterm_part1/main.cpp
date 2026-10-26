@@ -1,14 +1,14 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
 
-int ECHOPIN = 8;
-int TRIGPIN = 9;
-int potPin = A1;
-int buttonPin = 2;
-int buzzerPin = 3;
-int redLedPin = 13;
-int greenLedPin = 12;
-int blueLedPin = 11;
+const int ECHOPIN = 8;
+const int TRIGPIN = 9;
+const int potPin = A1;
+const int buttonPin = 2;
+const int buzzerPin = 3;
+const int redLedPin = 13;
+const int greenLedPin = 12;
+const int blueLedPin = 11;
 
 void setup() {
 

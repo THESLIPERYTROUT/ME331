@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-int ECHOPIN = 8;
-int TRIGPIN = 9;
-int servoPin = 4;
+const int ECHOPIN = 8;
+const int TRIGPIN = 9;
+const int servoPin = 6;
 
 Servo servo;
 
@@ -17,10 +17,11 @@ bool scanForward = true;
 
 const float objectDistanceCm = 20.0; // Adjuststable threshold for object detection
 
-const char* classifyMeasurements(const float measurements[], int count) {
+const char* classifyMeasurements(const float measurements[], int count) { 
+    //define boolean flags for all possible directions
     bool left = false;
     bool front = false;
-    bool right = false;
+    bool right = false; 
 
     for (int i = 0; i < count; i++) {
         if (measurements[i] <= 0 || measurements[i] > objectDistanceCm) {
@@ -59,7 +60,7 @@ void setup() {
 }
 
 
-long readUltrasonicDistance(int triggerPin, int echoPin)
+long readUltrasonicDistance(int triggerPin, int echoPin) // Returns the duration of the echo pulse in microseconds, 0 being a timeout
 {
   digitalWrite(triggerPin, LOW);
   delayMicroseconds(2);
@@ -73,33 +74,32 @@ long readUltrasonicDistance(int triggerPin, int echoPin)
 
 float readFilteredDistance() {
     float samples[3];
-    int validCount = 0;
+    int validCount = 0; 
     for (int i = 0; i < 3; i++) {
         long duration = readUltrasonicDistance(TRIGPIN, ECHOPIN);
         if (duration > 0) {
             samples[validCount++] = 0.01723f * duration;
         }
-        // Space pings to let echoes from the previous pulse fade.
+        // Space pings to let echoes from the previous pulse fade
         if (i < 2) delay(60);
     }
 
-    // Require at least two echoes; missing echoes are not zero-distance objects.
-    if (validCount < 2) return 0;
+    if (validCount < 2) return 0; // Require at least two echoes 
     for (int i = 1; i < validCount; i++) {
-        for (int j = i; j > 0 && samples[j] < samples[j - 1]; j--) {
+        for (int j = i; j > 0 && samples[j] < samples[j - 1]; j--) { //sort the samples in ascending order
             float temp = samples[j];
             samples[j] = samples[j - 1];
             samples[j - 1] = temp;
         }
     }
-    if (validCount == 2) return (samples[0] + samples[1]) / 2.0f;
-    return samples[1]; // Median rejects one isolated high or low reading.
+    if (validCount == 2) return (samples[0] + samples[1]) / 2.0f; //average returned
+    return samples[1]; // Median returned
 }
 
 void loop() {
     float measurements[length];
     for(int step = 0; step < length; step++) {
-        // Reverse each scan to avoid a long return move.
+        // Reverse each scan to avoid a long return move
         int i = scanForward ? step : length - 1 - step;
         servo.write(positions[i]);
         delay(servoSettleMs);
@@ -115,9 +115,8 @@ void loop() {
     }
     scanForward = !scanForward;
 
-    // Anchor predictions to a two-second schedule instead of adding a
-    // two-second delay after the time already spent scanning.
-    while ((long)(millis() - nextPredictionMs) < 0) {
+    // Anchor predictions to a two-second schedule
+    while ((long)(millis() - nextPredictionMs) < 0) { 
         delay(1);
     }
     nextPredictionMs += predictionIntervalMs;
