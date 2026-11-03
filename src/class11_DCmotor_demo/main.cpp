@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 int potPin = A1;
-int ENA = 4;
+int ENA = 5;
 int IN1 = 3;
 int IN2 = 2;    
 
@@ -45,18 +45,18 @@ void loop() {
   float voltage = read_potentiometer(reading, "voltage");
   
   Serial.print("Voltage: ");
-  Serial.print(reading);
+  Serial.print(voltage);
+  Serial.println(" V");
 
- 
   // Control motor direction based on potentiometer value
-  if (reading < 450) { // Potentiometer in the lower half
+  if (voltage < 2.4) { // Potentiometer in the lower half
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, HIGH); // Spin backward
-    analogWrite(ENA, 128); // Set duty cycle to 50%
-  } else if (reading > 573) { // Potentiometer in the upper half
+    analogWrite(ENA, 200); // Set duty cycle to 50%
+  } else if (voltage > 2.6) { // Potentiometer in the upper half
     digitalWrite(IN1, HIGH);
     digitalWrite(IN2, LOW); // Spin forward
-    analogWrite(ENA, 128); 
+    analogWrite(ENA, 200); 
   } else { // Potentiometer at midpoint
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, LOW); // Turn off motor
