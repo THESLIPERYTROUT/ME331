@@ -1,14 +1,11 @@
-// Part 2 receiver: moves the servo to each angle received over RF.
-//
-// Servo wiring: red -> 5V, brown/black -> GND, orange/yellow -> 6
-// The Knob example uses pin 9 for the servo, but here pin 9 is the radio's CE.
 #include <Arduino.h>
 #include <SPI.h>
 #include <RF24.h>
 #include <Servo.h>
 
-#include "../radio_config.h"
-
+const int cePin = 9;
+const int csnPin = 8;
+const byte address[6] = "TRT42";
 const int servoPin = 6;
 
 RF24 radio(cePin, csnPin);
@@ -30,7 +27,7 @@ void setup() {
 }
 
 void loop() {
-  // No delay here: the transmitter sets the pace, and this just checks for new data.
+  // No delay here: the transmitter sets the pace this just checks for new data
   if (radio.available()) {
     int angV = 0;
     radio.read(&angV, sizeof(angV));

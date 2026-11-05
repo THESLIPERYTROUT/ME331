@@ -1,9 +1,10 @@
-// Part 1 transmitter: sends "Hello World" once per second.
 #include <Arduino.h>
 #include <SPI.h>
 #include <RF24.h>
 
-#include "../radio_config.h"
+const int cePin = 9;
+const int csnPin = 8;
+const byte address[6] = "TRT42";
 
 RF24 radio(cePin, csnPin);
 
